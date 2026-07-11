@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON SLOTS - Deadline Casino</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { touch-action: manipulation; }
+
+  :root {
+    --gold: #f5c542;
+    --gold-dim: #a8862a;
+    --neon-pink: #ff2d78;
+    --neon-cyan: #2de2ff;
+    --neon-green: #3dff8c;
+    --danger: #ff4444;
+    --bg-dark: #0a0a12;
+    --panel: #14141f;
+    --panel-light: #1e1e2e;
+  }
+
+  body {
+    background: radial-gradient(ellipse at 50% 0%, #1a1030 0%, var(--bg-dark) 60%);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+    color: #eee;
+    padding: 16px;
+    overflow-x: hidden;
+  }
+
+  .machine {
+    background: linear-gradient(180deg, #23233a 0%, var(--panel) 100%);
+    border: 3px solid var(--gold-dim);
+    border-radius: 24px;
+    padding: 22px 26px;
+    box-shadow: 0 0 60px rgba(245,197,66,0.15), 0 0 120px rgba(255,45,120,0.1), inset 0 2px 12px rgba(255,255,255,0.05);
+    max-width: 680px;
+    width: 100%;
+    position: relative;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.8rem;
+    letter-spacing: 8px;
+    font-weight: 900;
+    background: linear-gradient(90deg, var(--neon-pink), var(--gold), var(--neon-cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 2px;
+    animation: titleGlow 3s ease-in-out infinite;
+  }
+  @keyframes titleGlow {
+    0%,100% { filter: drop-shadow(0 0 6px rgba(255,45,120,0.6)); }
+    50% { filter: drop-shadow(0 0 14px rgba(45,226,255,0.8)); }
+  }
+  .subtitle { text-align: center; color: var(--gold-dim); font-size: 0.7rem; letter-spacing: 4px; margin-bottom: 12px; }
+
+  /* --- Deadline bar --- */
+  .deadline-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .dl-box {
+    flex: 1;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid #2c2c40;
+    border-radius: 10px;
+    padding: 6px 10px;
+    text-align: center;
+  }
+  .dl-box .label { font-size: 0.6rem; color: #889; letter-spacing: 2px; }
+  .dl-box .value { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .dl-box .value.quota { color: var(--danger); text-shadow: 0 0 8px rgba(255,68,68,0.5); }
+  .dl-box .value.spins { color: var(--neon-green); }
+  .dl-box .value.round { color: var(--neon-cyan); }
+  .dl-box.urgent { animation: urgentPulse 0.8s ease-in-out infinite; border-color: var(--danger); }
+  @keyframes urgentPulse {
+    0%,100% { box-shadow: 0 0 0 rgba(255,68,68,0); }
+    50% { box-shadow: 0 0 16px rgba(255,68,68,0.5); }
+  }
+
+  /* --- Reels --- */
+  .reels-frame {
+    background: #000;
+    border: 2px solid var(--gold-dim);
+    border-radius: 14px;
+    padding: 10px;
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .reels-frame::before, .reels-frame::after {
+    content: "";
+    position: absolute; left: 0; right: 0;
+    height: 22%; pointer-events: none; z-index: 5;
+  }
+  .reels-frame::before { top: 0; background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent); }
+  .reels-frame::after { bottom: 0; background: linear-gradient(0deg, rgba(0,0,0,0.8), transparent); }
+
+  #lineSvg {
+    position: absolute; inset: 0;
+    z-index: 7; pointer-events: none;
+  }
+  #lineSvg polyline {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 6px currentColor);
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: lineDraw 0.5s ease forwards;
+  }
+  @keyframes lineDraw { to { stroke-dashoffset: 0; } }
+
+  .reel {
+    flex: 1;
+    min-width: 0;
+    height: 192px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #101018, #1c1c28 50%, #101018);
+    border-radius: 8px;
+    border: 1px solid #333;
+  }
+  .strip { display: flex; flex-direction: column; will-change: transform; }
+  .cell {
+    height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; flex-shrink: 0;
+    border-radius: 8px;
+  }
+  .cell.cell-win { animation: cellWin 0.45s ease infinite alternate; }
+  @keyframes cellWin {
+    from { background: rgba(245,197,66,0.12); transform: scale(1); }
+    to   { background: rgba(245,197,66,0.4); transform: scale(1.18); }
+  }
+  .cell.cell-scatter { animation: cellScatter 0.45s ease infinite alternate; }
+  @keyframes cellScatter {
+    from { background: rgba(255,45,120,0.12); transform: scale(1); }
+    to   { background: rgba(255,45,120,0.4); transform: scale(1.15) rotate(8deg); }
+  }
+
+  /* --- Message --- */
+  .message {
+    text-align: center; height: 52px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 8px 0 4px;
+  }
+  .msg-main { font-size: 1.1rem; font-weight: 700; letter-spacing: 2px; }
+  .msg-sub { font-size: 0.78rem; color: #999; margin-top: 2px; }
+  .msg-win { color: var(--gold); text-shadow: 0 0 16px rgba(245,197,66,0.8); animation: pop 0.4s ease; }
+  .msg-lose { color: #778; }
+  @keyframes pop { 0% { transform: scale(0.5); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+  /* --- Combo banner --- */
+  .combo-banner {
+    position: absolute;
+    top: 42%; left: 50%;
+    transform: translate(-50%,-50%);
+    z-index: 8;
+    font-size: 2rem; font-weight: 900; letter-spacing: 3px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 20px rgba(45,226,255,0.9), 0 3px 0 #06485c;
+    pointer-events: none;
+    display: none;
+  }
+  .combo-banner.show { display: block; animation: comboPop 0.9s cubic-bezier(0.2,2.4,0.4,1); }
+  .combo-banner.mega {
+    background: linear-gradient(90deg, var(--neon-pink), var(--gold), var(--neon-cyan), var(--neon-pink));
+    background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: comboPop 0.9s cubic-bezier(0.2,2.4,0.4,1), rainbowShift 1s linear infinite;
+    filter: drop-shadow(0 0 18px rgba(255,45,120,0.8));
+  }
+  @keyframes comboPop {
+    0% { transform: translate(-50%,-50%) scale(0) rotate(-15deg); opacity: 0; }
+    35% { transform: translate(-50%,-50%) scale(1.3) rotate(3deg); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  }
+
+  /* --- Stats --- */
+  .stats { display: flex; gap: 8px; margin-bottom: 10px; }
+  .stat {
+    flex: 1;
+    background: var(--panel-light);
+    border: 1px solid #2c2c40;
+    border-radius: 10px;
+    padding: 5px 10px;
+    text-align: center;
+  }
+  .stat .label { font-size: 0.6rem; color: #889; letter-spacing: 2px; }
+  .stat .value {
+    font-size: 1.2rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    color: var(--gold); text-shadow: 0 0 10px rgba(245,197,66,0.35);
+  }
+  .stat .value.cyan { color: var(--neon-cyan); text-shadow: 0 0 10px rgba(45,226,255,0.35); }
+  .stat .value.fire { color: #ff9d2d; text-shadow: 0 0 10px rgba(255,157,45,0.5); }
+  .stat.streak-hot { border-color: #ff9d2d; animation: urgentPulse 1s ease-in-out infinite; }
+
+  /* --- Controls --- */
+  .controls { display: flex; gap: 10px; align-items: stretch; }
+  .bet-box {
+    background: var(--panel-light);
+    border: 1px solid #2c2c40;
+    border-radius: 12px;
+    padding: 6px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .bet-box .label { font-size: 0.6rem; color: #889; letter-spacing: 2px; }
+  .bet-btn {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1px solid var(--gold-dim); background: transparent; color: var(--gold);
+    font-size: 1rem; cursor: pointer; transition: all 0.15s;
+  }
+  .bet-btn:hover:not(:disabled) { background: rgba(245,197,66,0.15); }
+  .bet-btn:disabled { opacity: 0.3; cursor: default; }
+  .bet-amount { font-size: 1.15rem; font-weight: 800; min-width: 44px; text-align: center; color: var(--gold); }
+
+  .spin-btn {
+    flex: 1; border: none; border-radius: 12px;
+    background: linear-gradient(180deg, var(--neon-pink), #c01050);
+    color: #fff; font-size: 1.25rem; font-weight: 900; letter-spacing: 5px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #800838, 0 0 24px rgba(255,45,120,0.4);
+    transition: all 0.1s; padding: 12px 0;
+  }
+  .spin-btn:hover:not(:disabled) { filter: brightness(1.15); }
+  .spin-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #800838; }
+  .spin-btn:disabled { filter: grayscale(0.8) brightness(0.6); cursor: default; box-shadow: none; }
+
+  .shop-btn {
+    border: 1px solid var(--neon-cyan); border-radius: 12px;
+    background: rgba(45,226,255,0.08); color: var(--neon-cyan);
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 2px;
+    cursor: pointer; padding: 0 16px; transition: all 0.15s;
+  }
+  .shop-btn:hover:not(:disabled) { background: rgba(45,226,255,0.2); box-shadow: 0 0 16px rgba(45,226,255,0.3); }
+  .shop-btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* --- Owned skills strip --- */
+  .skills-strip {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-top: 10px; min-height: 34px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px; padding: 5px 8px;
+    align-items: center;
+  }
+  .skills-strip .hint { color: #556; font-size: 0.7rem; letter-spacing: 1px; }
+  .skill-chip {
+    background: linear-gradient(180deg, #2a2a44, #1c1c30);
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 0.95rem;
+    cursor: help;
+    position: relative;
+    animation: chipIn 0.35s ease;
+  }
+  @keyframes chipIn { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1) rotate(0); } }
+  .skill-chip:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: 115%; left: 50%; transform: translateX(-50%);
+    background: #000; border: 1px solid var(--gold-dim);
+    padding: 5px 9px; border-radius: 7px;
+    font-size: 0.68rem; white-space: nowrap; z-index: 50; color: #ddd;
+  }
+
+  /* --- Paytable --- */
+  .paytable {
+    margin-top: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px; padding: 8px 12px;
+    font-size: 0.72rem;
+  }
+  .paytable-title { color: var(--gold-dim); letter-spacing: 3px; font-size: 0.62rem; margin-bottom: 4px; text-align: center; }
+  .paytable-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px 8px; }
+  .pay-row { display: flex; justify-content: space-between; align-items: center; color: #aab; }
+  .pay-row .mult { color: var(--gold); font-weight: 700; }
+  .pay-note { text-align: center; color: #667; font-size: 0.64rem; margin-top: 5px; line-height: 1.5; }
+  .pay-note b { color: #99a; }
+
+  /* ===== Shop modal ===== */
+  .modal-back {
+    position: fixed; inset: 0;
+    background: rgba(0,0,5,0.8);
+    backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: 16px;
+  }
+  .modal-back.open { display: flex; }
+  .shop {
+    background: linear-gradient(180deg, #1c1c30, #101020);
+    border: 2px solid var(--neon-cyan);
+    border-radius: 18px;
+    padding: 22px 24px;
+    max-width: 640px; width: 100%;
+    max-height: 88vh; overflow-y: auto;
+    box-shadow: 0 0 50px rgba(45,226,255,0.25);
+    animation: pop 0.3s ease;
+  }
+  .shop h2 { color: var(--neon-cyan); letter-spacing: 5px; text-align: center; font-size: 1.2rem; margin-bottom: 2px; }
+  .shop .shop-sub { text-align: center; color: #778; font-size: 0.72rem; margin-bottom: 14px; }
+  .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .perk {
+    background: var(--panel-light);
+    border: 1px solid #2c2c40;
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex; gap: 10px; align-items: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .perk:hover:not(.owned):not(.poor) { border-color: var(--gold); box-shadow: 0 0 14px rgba(245,197,66,0.25); transform: translateY(-2px); }
+  .perk.owned { opacity: 0.45; cursor: default; border-color: var(--neon-green); }
+  .perk.poor { opacity: 0.5; cursor: not-allowed; }
+  .perk .icon { font-size: 1.9rem; }
+  .perk .info { flex: 1; }
+  .perk .name { font-weight: 700; font-size: 0.85rem; color: #fff; }
+  .perk .desc { font-size: 0.68rem; color: #99a; margin-top: 1px; line-height: 1.35; }
+  .perk .price { font-weight: 800; color: var(--gold); font-size: 0.85rem; white-space: nowrap; }
+  .perk.owned .price { color: var(--neon-green); }
+  .perk.legend {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, #2a2340, #1c1830 60%, #2a1f38);
+    box-shadow: 0 0 14px rgba(245,197,66,0.25), inset 0 0 20px rgba(245,197,66,0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  .perk.legend::before {
+    content: "LEGEND";
+    position: absolute; top: 4px; right: 6px;
+    font-size: 0.52rem; letter-spacing: 2px; font-weight: 800;
+    background: linear-gradient(90deg, var(--neon-pink), var(--gold), var(--neon-cyan));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .perk.legend .icon { filter: drop-shadow(0 0 8px rgba(245,197,66,0.7)); }
+  .perk.legend:hover:not(.owned):not(.poor) { box-shadow: 0 0 24px rgba(245,197,66,0.5); }
+  .perk.cheat {
+    border-color: var(--neon-pink);
+    background: linear-gradient(135deg, #3a1030, #1c0a20 60%, #30102a);
+    box-shadow: 0 0 14px rgba(255,45,120,0.35), inset 0 0 24px rgba(255,45,120,0.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .perk.cheat::before {
+    content: "CHEAT";
+    position: absolute; top: 4px; right: 6px;
+    font-size: 0.52rem; letter-spacing: 2px; font-weight: 800;
+    color: var(--neon-pink);
+    text-shadow: 0 0 8px rgba(255,45,120,0.8);
+    animation: cheatBlink 0.8s step-end infinite;
+  }
+  @keyframes cheatBlink { 50% { opacity: 0.3; } }
+  .perk.cheat .icon { filter: drop-shadow(0 0 10px rgba(255,45,120,0.9)); }
+  .perk.cheat:hover:not(.owned):not(.poor) { box-shadow: 0 0 28px rgba(255,45,120,0.6); }
+  .shop-close {
+    display: block; margin: 16px auto 0;
+    background: transparent; border: 1px solid #667; color: #aab;
+    padding: 8px 30px; border-radius: 20px; cursor: pointer; letter-spacing: 2px;
+  }
+  .shop-close:hover { border-color: #fff; color: #fff; }
+
+  /* ===== Odds modal ===== */
+  .odds-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .odds-box {
+    background: var(--panel-light);
+    border: 1px solid #2c2c40;
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .odds-box .label { font-size: 0.62rem; color: #889; letter-spacing: 1px; }
+  .odds-box .value { font-size: 1.15rem; font-weight: 800; color: var(--neon-cyan); font-variant-numeric: tabular-nums; }
+  .odds-box .value.gold { color: var(--gold); }
+  .odds-box .value.pink { color: var(--neon-pink); }
+  .odds-table { width: 100%; font-size: 0.78rem; border-collapse: collapse; }
+  .odds-table th {
+    color: var(--gold-dim); font-size: 0.62rem; letter-spacing: 1px;
+    text-align: left; padding: 4px 6px; border-bottom: 1px solid #2c2c40; font-weight: 600;
+  }
+  .odds-table th.num, .odds-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .odds-table td { padding: 5px 6px; border-bottom: 1px solid #1c1c2e; color: #ccd; }
+  .odds-table td.sym { font-size: 1.1rem; }
+  .odds-bar-wrap { background: #101020; border-radius: 4px; height: 10px; overflow: hidden; width: 100%; }
+  .odds-bar { height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink)); border-radius: 4px; }
+  .odds-note { color: #667; font-size: 0.66rem; margin-top: 10px; text-align: center; line-height: 1.5; }
+  .wt-btn {
+    width: 26px; height: 26px; border-radius: 7px;
+    border: 1px solid var(--danger); background: transparent; color: var(--danger);
+    font-size: 0.95rem; cursor: pointer; transition: all 0.15s; vertical-align: middle;
+  }
+  .wt-btn.plus { border-color: var(--neon-green); color: var(--neon-green); }
+  .wt-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08); transform: scale(1.1); }
+  .wt-btn:disabled { opacity: 0.25; cursor: default; }
+  .wt-cost { font-size: 0.56rem; color: #667; margin-top: 2px; }
+
+  /* ===== Win overlay ===== */
+  .win-overlay {
+    position: fixed; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    z-index: 300; pointer-events: none;
+    overflow: hidden;
+  }
+  .win-overlay.show { display: flex; }
+  .rays {
+    position: absolute; width: 200vmax; height: 200vmax;
+    background: repeating-conic-gradient(rgba(245,197,66,0.16) 0deg 12deg, transparent 12deg 24deg);
+    animation: raysSpin 7s linear infinite;
+    border-radius: 50%;
+  }
+  .win-overlay.jackpot .rays {
+    background: repeating-conic-gradient(rgba(255,45,120,0.2) 0deg 10deg, rgba(45,226,255,0.14) 10deg 20deg, rgba(245,197,66,0.2) 20deg 30deg);
+    animation-duration: 4s;
+  }
+  @keyframes raysSpin { to { transform: rotate(360deg); } }
+  .win-center { text-align: center; z-index: 2; animation: winZoom 0.5s cubic-bezier(0.2, 2.2, 0.4, 1); }
+  @keyframes winZoom { from { transform: scale(0); } to { transform: scale(1); } }
+  .win-title {
+    font-size: 4rem; font-weight: 900; letter-spacing: 8px;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(245,197,66,0.9), 0 0 60px rgba(245,197,66,0.6), 0 4px 0 #7a5c10;
+    animation: winPulse 0.6s ease-in-out infinite alternate;
+  }
+  .win-overlay.jackpot .win-title {
+    font-size: 4.6rem;
+    background: linear-gradient(90deg, var(--neon-pink), var(--gold), var(--neon-cyan), var(--neon-pink));
+    background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: winPulse 0.5s ease-in-out infinite alternate, rainbowShift 1.2s linear infinite;
+    filter: drop-shadow(0 0 24px rgba(255,45,120,0.8));
+  }
+  @keyframes winPulse { from { transform: scale(1); } to { transform: scale(1.07); } }
+  @keyframes rainbowShift { to { background-position: 300% 0; } }
+  .win-amount {
+    font-size: 3rem; font-weight: 900; margin-top: 8px;
+    color: #fff; font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 24px rgba(255,255,255,0.7);
+  }
+  .win-label { font-size: 1rem; color: #ffd; letter-spacing: 4px; margin-top: 6px; text-shadow: 0 0 10px #000; }
+  .win-combo {
+    font-size: 1.4rem; font-weight: 900; color: var(--neon-cyan);
+    letter-spacing: 3px; margin-top: 4px;
+    text-shadow: 0 0 16px rgba(45,226,255,0.9);
+  }
+
+  .flash {
+    position: fixed; inset: 0; background: #fff;
+    opacity: 0; pointer-events: none; z-index: 290;
+  }
+
+  /* 💀 DOOM overlay */
+  .win-overlay.doom .rays {
+    background: repeating-conic-gradient(rgba(255,30,30,0.25) 0deg 12deg, rgba(60,0,0,0.35) 12deg 24deg);
+    animation-duration: 3.5s;
+  }
+  .win-overlay.doom .win-title {
+    color: #ff3333;
+    text-shadow: 0 0 24px rgba(255,0,0,0.9), 0 0 60px rgba(255,0,0,0.5), 0 4px 0 #550000;
+  }
+  .win-overlay.doom .win-amount { color: #ff5555; text-shadow: 0 0 20px rgba(255,0,0,0.8); }
+
+  /* 😇 SUPER FEVER中の筐体 */
+  .machine.fever { animation: feverGlow 1.2s linear infinite; }
+  @keyframes feverGlow {
+    0%   { border-color: #ff2d78; box-shadow: 0 0 45px rgba(255,45,120,0.55), inset 0 2px 12px rgba(255,255,255,0.05); }
+    33%  { border-color: #f5c542; box-shadow: 0 0 45px rgba(245,197,66,0.55), inset 0 2px 12px rgba(255,255,255,0.05); }
+    66%  { border-color: #2de2ff; box-shadow: 0 0 45px rgba(45,226,255,0.55), inset 0 2px 12px rgba(255,255,255,0.05); }
+    100% { border-color: #ff2d78; box-shadow: 0 0 45px rgba(255,45,120,0.55), inset 0 2px 12px rgba(255,255,255,0.05); }
+  }
+
+  .coin {
+    position: fixed; z-index: 310;
+    font-size: 28px; pointer-events: none;
+    filter: drop-shadow(0 0 6px rgba(245,197,66,0.8));
+  }
+
+  /* ===== Settlement / gameover ===== */
+  .settle {
+    background: linear-gradient(180deg, #1c1c30, #101020);
+    border: 2px solid var(--gold);
+    border-radius: 18px;
+    padding: 30px 40px;
+    text-align: center;
+    max-width: 440px; width: 100%;
+    box-shadow: 0 0 60px rgba(245,197,66,0.3);
+    animation: pop 0.35s ease;
+  }
+  .settle.gameover { border-color: var(--danger); box-shadow: 0 0 60px rgba(255,68,68,0.35); }
+  .settle h2 { font-size: 1.6rem; letter-spacing: 4px; margin-bottom: 10px; }
+  .settle .big { font-size: 2.2rem; font-weight: 900; margin: 8px 0; font-variant-numeric: tabular-nums; }
+  .settle p { color: #99a; font-size: 0.85rem; line-height: 1.6; }
+  .settle button {
+    margin-top: 18px;
+    background: linear-gradient(180deg, var(--neon-pink), #c01050);
+    border: none; color: #fff; font-weight: 800; letter-spacing: 3px;
+    padding: 12px 40px; border-radius: 12px; cursor: pointer; font-size: 1rem;
+    box-shadow: 0 4px 0 #800838;
+  }
+  .settle button:active { transform: translateY(3px); box-shadow: none; }
+  .boost-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; text-align: left; }
+  .boost-grid .perk { border-color: var(--gold-dim); }
+  .boost-grid .perk:hover { border-color: var(--neon-cyan); box-shadow: 0 0 16px rgba(45,226,255,0.3); transform: translateY(-2px); }
+
+  /* ===== モバイル最適化 ===== */
+  @media (max-width: 560px) {
+    body { padding: 6px; }
+    .machine { padding: 12px 10px 16px; border-radius: 16px; }
+    h1 { font-size: 1.25rem; letter-spacing: 4px; }
+    .subtitle { font-size: 0.58rem; letter-spacing: 2px; margin-bottom: 10px; }
+
+    .deadline-bar { gap: 4px; }
+    .dl-box { padding: 4px 4px; border-radius: 8px; }
+    .dl-box .label { font-size: 0.48rem; letter-spacing: 1px; }
+    .dl-box .value { font-size: 0.82rem; }
+
+    .reels-frame { padding: 6px; gap: 3px; border-radius: 10px; }
+    .cell { font-size: 24px; height: 48px; }
+    .reel { height: 144px; border-radius: 6px; }
+
+    .message { height: 44px; }
+    .msg-main { font-size: 0.92rem; }
+    .msg-sub { font-size: 0.68rem; }
+
+    .stats { gap: 5px; margin-bottom: 8px; }
+    .stat { padding: 4px 6px; border-radius: 8px; }
+    .stat .label { font-size: 0.5rem; letter-spacing: 1px; }
+    .stat .value { font-size: 0.95rem; }
+
+    /* コントロールは2段に折り返す */
+    .controls { flex-wrap: wrap; gap: 6px; }
+    .bet-box { flex: 1 1 100%; justify-content: center; padding: 6px 8px; }
+    .bet-btn { width: 38px; height: 38px; font-size: 1.15rem; }
+    .bet-amount { font-size: 1.2rem; }
+    .spin-btn { flex: 1 1 52%; font-size: 1.1rem; letter-spacing: 3px; padding: 14px 0; }
+    .shop-btn { flex: 1 1 20%; font-size: 0.68rem; letter-spacing: 1px; padding: 6px 4px; }
+
+    .skills-strip { min-height: 30px; }
+    .paytable { padding: 6px 8px; }
+    .paytable-grid { grid-template-columns: repeat(2, 1fr); }
+    .pay-note { font-size: 0.58rem; }
+
+    .shop { padding: 14px 12px; border-radius: 14px; }
+    .shop h2 { font-size: 1rem; letter-spacing: 3px; }
+    .shop-grid { grid-template-columns: 1fr; }
+    .perk { padding: 8px 10px; }
+
+    .odds-summary { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+    .odds-box .value { font-size: 0.95rem; }
+    .odds-table { font-size: 0.66rem; }
+    .odds-table td { padding: 4px 3px; }
+    .odds-table td.sym { font-size: 0.95rem; }
+    .wt-btn { width: 30px; height: 30px; }
+    .wt-cost { font-size: 0.5rem; }
+
+    .settle { padding: 18px 14px; }
+    .settle h2 { font-size: 1.2rem; }
+    .settle .big { font-size: 1.6rem; }
+
+    .win-title { font-size: 2.2rem !important; letter-spacing: 3px; }
+    .win-amount { font-size: 1.7rem; }
+    .win-combo { font-size: 1rem; }
+    .win-label { font-size: 0.78rem; letter-spacing: 2px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="machine" id="machine">
+  <h1>NEON SLOTS</h1>
+  <div class="subtitle">◆ DEADLINE CASINO ◆ 5 REELS ◆</div>
+
+  <div class="deadline-bar">
+    <div class="dl-box"><div class="label">ROUND</div><div class="value round" id="roundEl">1</div></div>
+    <div class="dl-box" id="quotaBox"><div class="label">ノルマ (支払期限)</div><div class="value quota" id="quotaEl">300</div></div>
+    <div class="dl-box" id="spinsBox"><div class="label">残りスピン</div><div class="value spins" id="spinsEl">8</div></div>
+    <div class="dl-box"><div class="label">WAYS</div><div class="value round" id="linesEl">縦横斜</div></div>
+  </div>
+
+  <div class="reels-frame" id="reelsFrame">
+    <div class="reel" id="reel0"><div class="strip"></div></div>
+    <div class="reel" id="reel1"><div class="strip"></div></div>
+    <div class="reel" id="reel2"><div class="strip"></div></div>
+    <div class="reel" id="reel3"><div class="strip"></div></div>
+    <div class="reel" id="reel4"><div class="strip"></div></div>
+    <svg id="lineSvg"></svg>
+    <div class="combo-banner" id="comboBanner"></div>
+  </div>
+
+  <div class="message">
+    <div class="msg-main" id="msgMain">SPINでスタート</div>
+    <div class="msg-sub" id="msgSub">期限までにノルマを稼げ</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="label">CREDITS</div><div class="value" id="credits">1000</div></div>
+    <div class="stat"><div class="label">LAST WIN</div><div class="value cyan" id="lastWin">0</div></div>
+    <div class="stat" id="streakBox"><div class="label">🔥 STREAK</div><div class="value fire" id="streakEl">x1.0</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="bet-box">
+      <div class="label">BET</div>
+      <button class="bet-btn" id="betDown">−</button>
+      <div class="bet-amount" id="betAmount">10</div>
+      <button class="bet-btn" id="betUp">＋</button>
+    </div>
+    <button class="spin-btn" id="spinBtn">SPIN</button>
+    <button class="shop-btn" id="shopBtn">🛒 SKILL<br>SHOP</button>
+    <button class="shop-btn" id="oddsBtn" style="border-color:var(--gold-dim); color:var(--gold); background:rgba(245,197,66,0.08);">📊<br>ODDS</button>
+  </div>
+
+  <div class="skills-strip" id="skillsStrip">
+    <span class="hint">スキル未所持 — SHOPで購入して配当を強化せよ</span>
+  </div>
+
+  <div class="paytable">
+    <div class="paytable-title">─ PAYTABLE (3つ連続で当たり) ─</div>
+    <div class="paytable-grid" id="paytableGrid"></div>
+    <div class="pay-note">
+      <b style="color:var(--gold)">縦・横・斜め、盤面のどこでも3つ連続で揃えば当たり！</b><br>
+      <b>4連続=配当x4 ／ 5連続=配当x15</b>　出現率は配当が低い絵柄ほど高い<br>
+      🍒スキャッター: 盤面のどこでも5個=x0.5 ／ 8個=x2 ／ 10個=x8 (🌾スキルで必要数-1)<br>
+      複数同時成立で <b style="color:var(--neon-cyan)">COMBOボーナス</b>、連勝で <b style="color:#ff9d2d">🔥ストリーク倍率</b> (最大x3、⚡でx5)<br>
+      イベント: <b style="color:var(--danger)">💀ドクロ整列(1/500・ROUND3〜)=所持クレジット全没収</b> ／ <b style="color:var(--gold)">😇天使の輪(1/300)=スーパーフィーバー</b><br>
+      🎉 ROUND11でMAXベット2000解放 ／ 🏆 <b style="color:var(--gold)">ROUND20制覇でGAME CLEAR</b>→エンドレスモード<br>
+      エンドレスでは💀1/200・😇1/150に上昇、<b style="color:var(--neon-pink)">CHEATスキル解禁</b>＆出現率操作の上限100
+    </div>
+  </div>
+</div>
+
+<!-- Shop modal -->
+<div class="modal-back" id="shopModal">
+  <div class="shop">
+    <h2>🛒 SKILL SHOP</h2>
+    <div class="shop-sub">在庫は毎ラウンド3品だけランダム入荷。効果は永続、買い逃し注意</div>
+    <div class="shop-grid" id="shopGrid"></div>
+    <button class="shop-close" id="shopClose">閉じる (S)</button>
+  </div>
+</div>
+
+<!-- Odds modal -->
+<div class="modal-back" id="oddsModal">
+  <div class="shop" style="border-color: var(--gold-dim); box-shadow: 0 0 50px rgba(245,197,66,0.25);">
+    <h2 style="color: var(--gold);">📊 確率 &amp; オッズ</h2>
+    <div class="shop-sub">所持スキルの効果を反映したリアルタイム計算</div>
+    <div id="oddsBody"></div>
+    <button class="shop-close" id="oddsClose">閉じる (O)</button>
+  </div>
+</div>
+
+<!-- Settlement / gameover modal -->
+<div class="modal-back" id="settleModal">
+  <div class="settle" id="settleBox"></div>
+</div>
+
+<!-- Win overlay -->
+<div class="win-overlay" id="winOverlay">
+  <div class="rays"></div>
+  <div class="win-center">
+    <div class="win-title" id="winTitle">BIG WIN</div>
+    <div class="win-amount" id="winAmount">0</div>
+    <div class="win-combo" id="winCombo"></div>
+    <div class="win-label" id="winLabel"></div>
+  </div>
+</div>
+<div class="flash" id="flash"></div>
+
+<script>
+(() => {
+  // ===== Config =====
+  // 出現率は配当が低い順に高い（配当逆順）
+  const SYMBOLS = [
+    { icon: "🃏", weight: 16, pay: 8 },
+    { icon: "🍒", weight: 14, pay: 12 },
+    { icon: "🍋", weight: 12, pay: 15 },
+    { icon: "🍉", weight: 10, pay: 25 },
+    { icon: "⭐", weight: 8,  pay: 35 },
+    { icon: "🔔", weight: 6,  pay: 50 },
+    { icon: "💎", weight: 4,  pay: 100 },
+    { icon: "7️⃣", weight: 2,  pay: 250 },
+  ];
+  const NREELS = 5, NROWS = 3;
+  const BET_STEPS_BASE  = [10, 20, 50, 100, 200, 500];
+  const BET_STEPS_EX    = [10, 20, 50, 100, 200, 500, 1000, 2000];  // ROUND11(10ステージクリア)で解放
+  const BET_STEPS_CHEAT = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 50000, 100000];  // 💸ハイローラー
+  let BET_STEPS = BET_STEPS_BASE;
+  const SKULL_CHANCE = 1 / 500;    // 💀 呪いのドクロ (所持クレジット全没収・ROUND3以降のみ)
+  const FEVER_CHANCE = 1 / 300;    // 😇 スーパーフィーバー (10回無料・全配当x5)
+  const SKULL_CHANCE_ENDLESS = 1 / 200;  // エンドレスは危険も甘美も濃くなる
+  const FEVER_CHANCE_ENDLESS = 1 / 150;
+  const GOAL_ROUND = 20;           // 制覇ラウンド。クリア後はエンドレス＆チート解禁
+  const STRIP_LEN = 30;
+  const SPINS_PER_ROUND = 5;
+  const START_QUOTA = 300;
+  const QUOTA_MULT = 2.2;
+  const LINE_DIV = 19;               // run win = bet * pay * countMult / LINE_DIV
+  const COUNT_MULT = { 3: 1, 4: 4, 5: 15 };
+  const STREAK_STEP = 0.2, STREAK_CAP = 3;
+
+  // 縦・横・斜め すべてのパス（どこでも3つ連続で当たり）
+  const PATHS = (() => {
+    const p = [];
+    const rowColors = ["#2de2ff", "#ff2d78", "#3dff8c"];
+    for (let r = 0; r < NROWS; r++)
+      p.push({ cells: [...Array(NREELS)].map((_,c)=>[c,r]), name: "横", color: rowColors[r], isRow: true });
+    for (let c = 0; c < NREELS; c++)
+      p.push({ cells: [0,1,2].map(r=>[c,r]), name: "縦", color: "#f5c542" });
+    for (let c = 0; c <= NREELS-3; c++) {
+      p.push({ cells: [[c,0],[c+1,1],[c+2,2]], name: "斜め", color: "#c07bff" });
+      p.push({ cells: [[c,2],[c+1,1],[c+2,0]], name: "斜め", color: "#ff9d2d" });
+    }
+    return p;
+  })();
+
+  const PERKS = [
+    // --- 確率UP系 ---
+    { id: "sync",     icon: "🎯", name: "シンクロレンズ", desc: "隣のリールと絵柄が揃いやすくなる (出目同調)", price: 650 },
+    { id: "wild",     icon: "🃏", name: "ワイルドジョーカー", desc: "🃏が全絵柄の代わりになる (実絵柄2個以上・配当40%・3連まで)", price: 1000 },
+    { id: "seven",    icon: "🧲", name: "セブンマグネット", desc: "7️⃣の出現率2倍＋7️⃣は横2連続でも配当が出る", price: 500 },
+    { id: "royal",    icon: "💠", name: "ロイヤルブースト", desc: "💎🔔⭐が横2連続でも当たり＋配当1.5倍", price: 600 },
+    { id: "field",    icon: "🌾", name: "チェリー畑", desc: "スキャッターの必要🍒数が1個減る (4/7/9個)", price: 500 },
+    { id: "respin",   icon: "🎲", name: "運命のダイス", desc: "ハズレ時、30%で無料リスピン発動", price: 450 },
+    // --- 配当UP系 ---
+    { id: "clover",   icon: "🍀", name: "幸運のクローバー", desc: "すべての配当 +50%", price: 400 },
+    { id: "diamond",  icon: "💍", name: "ダイヤの指輪", desc: "💎 ラインの配当が2倍", price: 350 },
+    { id: "cherry",   icon: "🍒", name: "チェリーボム", desc: "🍒 ライン配当3倍・スキャッター配当2倍", price: 400 },
+    { id: "king",     icon: "👑", name: "揃いの王", desc: "4連続以上の揃い配当が2倍", price: 600 },
+    { id: "combo",    icon: "🔥", name: "コンボの達人", desc: "COMBOボーナスが2倍になる", price: 350 },
+    { id: "voltage",  icon: "⚡", name: "ボルテージ", desc: "🔥ストリーク倍率の上限がx3からx5に上がる", price: 500 },
+    // --- 絵柄特化系 ---
+    { id: "lemon",    icon: "🍋", name: "レモンスカッシュ", desc: "🍋 の揃い配当が3倍", price: 300 },
+    { id: "melon",    icon: "🍉", name: "スイカ割り", desc: "🍉 の揃い配当が3倍", price: 300 },
+    { id: "star",     icon: "⭐", name: "スターダスト", desc: "⭐ の揃い配当が2倍", price: 350 },
+    // --- 方向特化系 ---
+    { id: "tower",    icon: "🗼", name: "タワーパワー", desc: "縦の揃い配当が2倍", price: 400 },
+    { id: "mirror",   icon: "🪞", name: "ミラーミラー", desc: "斜めの揃い配当が2倍", price: 400 },
+    // --- 生存系 ---
+    { id: "insurance",icon: "🛡️", name: "保険証書", desc: "ハズレ時、ベットの50%が返金される", price: 350 },
+    { id: "charm",    icon: "📿", name: "不屈のお守り", desc: "ハズレてもストリークがリセットされず半減で済む", price: 350 },
+    { id: "invest",   icon: "🏦", name: "複利経営", desc: "ノルマ支払い後、残高の10%が利息として入る", price: 500 },
+    { id: "card",     icon: "💳", name: "プラチナカード", desc: "ノルマの支払いが10%割引になる", price: 450 },
+    // --- レジェンド級（超高額・超強力）---
+    { id: "laplace",  icon: "👁️", name: "ラプラスの悪魔", desc: "ハズレ時、100%無料リスピンが発動する", price: 800000, legend: true },
+    { id: "midas",    icon: "🌟", name: "ミダスの手", desc: "すべての配当がさらに3倍になる", price: 1000000, legend: true },
+    { id: "infinity", icon: "♾️", name: "インフィニティ", desc: "🔥ストリーク倍率の上限が撤廃される", price: 1200000, legend: true },
+    { id: "god",      icon: "🎰", name: "ゴッドマシン", desc: "ハズレが消滅し、全スピンで必ず何かが当たる", price: 2000000, legend: true },
+    // --- チートスキル（ROUND20クリア後に解禁・ハチャメチャ・超高額）---
+    { id: "timesand",   icon: "⏳", name: "時の砂", desc: "毎ラウンドのスピン回数が5回→10回になる", price: 10000000, cheat: true },
+    { id: "highroller", icon: "💸", name: "ハイローラー", desc: "MAXベットが100,000まで解放される", price: 15000000, cheat: true },
+    { id: "gigamult",   icon: "🔮", name: "ギガマルチプライヤー", desc: "すべての配当がさらに5倍になる", price: 20000000, cheat: true },
+    { id: "crusher",    icon: "🧨", name: "ノルマクラッシャー", desc: "ノルマの増加率が激減する (x2.2→x1.5)", price: 30000000, cheat: true },
+  ];
+
+  // ノルマ達成報酬: 倍率強化（何度でもレベルアップ可能）
+  const BOOSTS = [
+    { id: "all",     icon: "💹", name: "配当ブースト", desc: "すべての配当 +10% (累積)" },
+    { id: "combo",   icon: "🔗", name: "コンボ強化", desc: "同時成立1件ごとのコンボ倍率 +0.25" },
+    { id: "streak",  icon: "🔥", name: "ストリーク強化", desc: "連勝ごとの倍率上昇量 +0.05" },
+    { id: "chain",   icon: "📏", name: "ロングチェーン", desc: "4連続以上の揃い配当 +25%" },
+    { id: "scatter", icon: "🍒", name: "スキャッター強化", desc: "🍒スキャッター配当 +50%" },
+  ];
+
+  // ===== State =====
+  let credits = 1000;
+  let betIdx = 0;
+  let spinning = false;
+  let round = 1;
+  let quota = START_QUOTA;
+  let spinsLeft = SPINS_PER_ROUND;
+  let owned = new Set();
+  let gameOver = false;
+  let streak = 0;
+  let weightMod = {};   // 絵柄ごとの出現率調整 (コインで購入)
+  let boostLv = { all: 0, combo: 0, streak: 0, chain: 0, scatter: 0 };   // ノルマ達成報酬
+  let fever = 0;        // スーパーフィーバー残り回数
+  let shopStock = [];   // ショップの在庫 (毎ラウンド3つランダム入荷)
+
+  // ===== DOM =====
+  const $ = id => document.getElementById(id);
+  const reels = [...Array(NREELS)].map((_,i) => $("reel"+i));
+  const strips = reels.map(r => r.querySelector(".strip"));
+  const msgMain = $("msgMain"), msgSub = $("msgSub");
+  const creditsEl = $("credits"), lastWinEl = $("lastWin"), betEl = $("betAmount");
+  const spinBtn = $("spinBtn"), betUp = $("betUp"), betDown = $("betDown");
+  const shopBtn = $("shopBtn"), shopModal = $("shopModal"), shopGrid = $("shopGrid"), shopClose = $("shopClose");
+  const settleModal = $("settleModal"), settleBox = $("settleBox");
+  const winOverlay = $("winOverlay"), winTitle = $("winTitle"), winAmountEl = $("winAmount"), winLabel = $("winLabel"), winComboEl = $("winCombo");
+  const flash = $("flash"), machine = $("machine");
+  const roundEl = $("roundEl"), quotaEl = $("quotaEl"), spinsEl = $("spinsEl"), linesEl = $("linesEl");
+  const skillsStrip = $("skillsStrip");
+  const streakEl = $("streakEl"), streakBox = $("streakBox");
+  const lineSvg = $("lineSvg"), reelsFrame = $("reelsFrame"), comboBanner = $("comboBanner");
+
+  function cellH() { return strips[0].querySelector(".cell")?.offsetHeight || 64; }
+
+  // ===== Paytable UI =====
+  SYMBOLS.slice().sort((a,b)=>b.pay-a.pay).forEach(s => {
+    const div = document.createElement("div");
+    div.className = "pay-row";
+    div.innerHTML = `<span>${s.icon}x3</span><span class="mult">x${s.pay}</span>`;
+    $("paytableGrid").appendChild(div);
+  });
+
+  // ===== Weighted random =====
+  function currentSymbols() {
+    return SYMBOLS.map(s => {
+      let w = Math.max(1, s.weight + (weightMod[s.icon] || 0));
+      if (s.icon === "7️⃣" && owned.has("seven")) w *= 2;
+      if (s.icon === "🃏" && owned.has("wild")) w = Math.ceil(w / 2);
+      return {...s, weight: w};
+    });
+  }
+  // 出現率操作のコストと上下限
+  // 出現率上限: 通常は初期値の2倍、ROUND20クリア後(エンドレス)は100まで
+  function weightLimits(base) { return { min: Math.max(1, Math.ceil(base.weight/2)), max: round > GOAL_ROUND ? 100 : base.weight * 2 }; }
+  function plusCost(base) { return base.pay * 4; }
+  const MINUS_COST = 200;
+  function randSymbol() {
+    const syms = currentSymbols();
+    const tw = syms.reduce((a,s)=>a+s.weight,0);
+    let r = Math.random() * tw;
+    for (const s of syms) { r -= s.weight; if (r < 0) return s; }
+    return syms[syms.length-1];
+  }
+
+  // ===== Strips =====
+  function buildStrip(stripEl, final3) {
+    stripEl.innerHTML = "";
+    const cells = [];
+    for (let i = 0; i < STRIP_LEN; i++) cells.push(randSymbol().icon);
+    cells.push(final3[0].icon, final3[1].icon, final3[2].icon);
+    for (const c of cells) {
+      const d = document.createElement("div");
+      d.className = "cell"; d.textContent = c;
+      stripEl.appendChild(d);
+    }
+    return cells.length;
+  }
+  function setStatic(stripEl, symbols3) {
+    stripEl.style.transition = "none";
+    stripEl.style.transform = "translateY(0)";
+    stripEl.innerHTML = "";
+    for (const s of symbols3) {
+      const d = document.createElement("div");
+      d.className = "cell"; d.textContent = s;
+      stripEl.appendChild(d);
+    }
+  }
+  strips.forEach(s => setStatic(s, [randSymbol().icon, randSymbol().icon, randSymbol().icon]));
+
+  // ===== Audio =====
+  let actx;
+  function beep(freq, dur=0.08, type="square", vol=0.04, when=0) {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = vol;
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + when + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(actx.currentTime + when); o.stop(actx.currentTime + when + dur);
+    } catch(e) {}
+  }
+  function winJingle() { [523,659,784,880].forEach((f,i)=>beep(f, 0.14, "triangle", 0.06, i*0.08)); }
+  function bigJingle() {
+    [523,659,784,1047,784,1047,1319,1568].forEach((f,i)=>beep(f, 0.16, "triangle", 0.07, i*0.09));
+    [131,165,196].forEach((f,i)=>beep(f, 0.5, "sawtooth", 0.03, i*0.25));
+  }
+  function jackpotJingle() {
+    const seq = [523,659,784,1047,1319,1047,1319,1568,2093,1568,2093,2637];
+    seq.forEach((f,i)=>beep(f, 0.18, "triangle", 0.08, i*0.1));
+    seq.forEach((f,i)=>beep(f/2, 0.2, "square", 0.03, i*0.1));
+    [98,123,147,196].forEach((f,i)=>beep(f, 0.8, "sawtooth", 0.04, i*0.3));
+  }
+  function comboSound(n) {
+    for (let i=0;i<n;i++) beep(660 + i*160, 0.1, "triangle", 0.06, i*0.12);
+  }
+  function coinTick() { beep(1800 + Math.random()*600, 0.04, "square", 0.025); }
+
+  // ===== FX =====
+  function shake(el, intensity=8, dur=500) {
+    const frames = [];
+    for (let i=0;i<12;i++) frames.push({ transform: `translate(${(Math.random()*2-1)*intensity}px, ${(Math.random()*2-1)*intensity}px)` });
+    frames.push({ transform: "translate(0,0)" });
+    el.animate(frames, { duration: dur, easing: "ease-out" });
+  }
+  function flashScreen(opacity=0.5, dur=250) {
+    flash.animate([{opacity}, {opacity: 0}], {duration: dur, easing: "ease-out"});
+  }
+  function coinBurst(n, fromRect) {
+    const cx = fromRect ? fromRect.left + fromRect.width/2 : innerWidth/2;
+    const cy = fromRect ? fromRect.top + fromRect.height/2 : innerHeight/2;
+    const emo = ["🪙","💰","✨","⭐"];
+    for (let i=0;i<n;i++) {
+      const c = document.createElement("div");
+      c.className = "coin";
+      c.textContent = emo[Math.random() < 0.7 ? 0 : Math.floor(Math.random()*emo.length)];
+      c.style.left = cx + "px"; c.style.top = cy + "px";
+      document.body.appendChild(c);
+      const ang = Math.random()*Math.PI*2;
+      const v = 150 + Math.random()*400;
+      const dx = Math.cos(ang)*v;
+      const dyUp = -Math.abs(Math.sin(ang))*v - 200 - Math.random()*250;
+      const dur = 1200 + Math.random()*900;
+      c.animate([
+        { transform: "translate(0,0) rotate(0deg) scale(1)", opacity: 1 },
+        { transform: `translate(${dx*0.5}px, ${dyUp}px) rotate(${Math.random()*360}deg) scale(1.2)`, opacity: 1, offset: 0.35 },
+        { transform: `translate(${dx}px, ${innerHeight}px) rotate(${720+Math.random()*360}deg) scale(0.8)`, opacity: 0.6 }
+      ], { duration: dur, easing: "cubic-bezier(0.2, 0.6, 0.6, 1)" }).onfinish = () => c.remove();
+    }
+  }
+  function countUp(el, target, dur=1200) {
+    return new Promise(res => {
+      const t0 = performance.now();
+      let lastTick = 0;
+      function step(t) {
+        const p = Math.min((t - t0) / dur, 1);
+        const eased = 1 - Math.pow(1-p, 3);
+        el.textContent = "+" + Math.round(target * eased).toLocaleString();
+        if (t - lastTick > 60 && p < 1) { coinTick(); lastTick = t; }
+        if (p < 1) requestAnimationFrame(step); else res();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  // ----- payline drawing -----
+  function cellCenter(reelIdx, row) {
+    const frameRect = reelsFrame.getBoundingClientRect();
+    const reelRect = reels[reelIdx].getBoundingClientRect();
+    const h = cellH();
+    return {
+      x: reelRect.left - frameRect.left + reelRect.width/2,
+      y: reelRect.top - frameRect.top + row*h + h/2
+    };
+  }
+  function drawLines(winLines) {
+    lineSvg.innerHTML = "";
+    const frameRect = reelsFrame.getBoundingClientRect();
+    lineSvg.setAttribute("viewBox", `0 0 ${frameRect.width} ${frameRect.height}`);
+    winLines.forEach((wl, idx) => {
+      const pts = wl.cells.map(([c,r])=>{ const p = cellCenter(c,r); return `${p.x},${p.y}`; }).join(" ");
+      const pl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      pl.setAttribute("points", pts);
+      pl.setAttribute("stroke", wl.path.color);
+      pl.style.color = wl.path.color;
+      pl.style.animationDelay = (idx*0.18) + "s";
+      lineSvg.appendChild(pl);
+    });
+  }
+  function clearLineFX() {
+    lineSvg.innerHTML = "";
+    comboBanner.classList.remove("show");
+    document.querySelectorAll(".cell-win,.cell-scatter").forEach(c=>c.classList.remove("cell-win","cell-scatter"));
+  }
+  function highlightCells(winLines, scatterHit) {
+    for (const wl of winLines) {
+      for (const [c,r] of wl.cells) {
+        const strip = strips[c];
+        const cell = strip.children[strip.children.length - 3 + r];
+        if (cell) cell.classList.add("cell-win");
+      }
+    }
+    if (scatterHit) {
+      strips.forEach(strip => {
+        for (let r=0;r<3;r++) {
+          const cell = strip.children[strip.children.length - 3 + r];
+          if (cell && cell.textContent === "🍒") cell.classList.add("cell-scatter");
+        }
+      });
+    }
+  }
+  // ===== コンボ順次演出 =====
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function comboBannerShow(text, i) {
+    comboBanner.textContent = text;
+    const maxSize = innerWidth < 560 ? 2.2 : 4.2;
+    comboBanner.style.fontSize = Math.min(innerWidth < 560 ? 1.2 + i * 0.22 : 1.8 + i * 0.35, maxSize) + "rem";
+    const colors = ["#2de2ff", "#3dff8c", "#f5c542", "#ff9d2d", "#ff2d78"];
+    if (i >= 5) {
+      comboBanner.style.color = "";
+      comboBanner.classList.add("mega");
+    } else {
+      comboBanner.classList.remove("mega");
+      comboBanner.style.color = colors[Math.min(i, 4)];
+    }
+    comboBanner.classList.remove("show");
+    void comboBanner.offsetHeight;
+    comboBanner.classList.add("show");
+  }
+
+  function comboHitSound(i) {
+    const f = 440 * Math.pow(1.15, i);
+    beep(f, 0.12, "triangle", 0.06);
+    if (i >= 2) beep(f * 1.5, 0.12, "triangle", 0.05, 0.04);
+    if (i >= 4) beep(f * 2, 0.14, "triangle", 0.05, 0.08);
+    if (i >= 6) beep(f * 3, 0.16, "square", 0.03, 0.12);
+  }
+
+  function drawOneLine(wl) {
+    const frameRect = reelsFrame.getBoundingClientRect();
+    lineSvg.setAttribute("viewBox", `0 0 ${frameRect.width} ${frameRect.height}`);
+    const pts = wl.cells.map(([c,r])=>{ const p = cellCenter(c,r); return `${p.x},${p.y}`; }).join(" ");
+    const pl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    pl.setAttribute("points", pts);
+    pl.setAttribute("stroke", wl.path.color);
+    pl.style.color = wl.path.color;
+    lineSvg.appendChild(pl);
+  }
+
+  // コンボを1本ずつ見せる。後半になるほど音・コイン・シェイク・バナーが豪華になる
+  async function playComboSequence(r) {
+    const rect = reelsFrame.getBoundingClientRect();
+    const hits = r.winLines.slice().sort((a,b)=>a.win-b.win);   // 弱い当たり→強い当たりの順でクレッシェンド
+    lineSvg.innerHTML = "";
+    let n = 0;
+    for (const wl of hits) {
+      drawOneLine(wl);
+      for (const [c,row] of wl.cells) {
+        const strip = strips[c];
+        const cell = strip.children[strip.children.length - 3 + row];
+        if (cell) cell.classList.add("cell-win");
+      }
+      comboBannerShow(`${n+1} COMBO!`, n);
+      comboHitSound(n);
+      coinBurst(4 + n * 6, rect);
+      if (n >= 1) shake(machine, 3 + n * 2, 300);
+      if (n >= 2) flashScreen(0.1 + n * 0.05, 150);
+      n++;
+      await sleep(Math.max(400, 650 - n * 40));
+    }
+    if (r.scatterWin > 0) {
+      strips.forEach(strip => {
+        for (let row = 0; row < 3; row++) {
+          const cell = strip.children[strip.children.length - 3 + row];
+          if (cell && cell.textContent === "🍒") cell.classList.add("cell-scatter");
+        }
+      });
+      comboBannerShow("🍒 SCATTER!", n);
+      comboHitSound(n);
+      coinBurst(6 + n * 6, rect);
+      if (n >= 1) shake(machine, 3 + n * 2, 300);
+      n++;
+      await sleep(600);
+    }
+    // フィニッシュ: 合計倍率
+    comboBannerShow(`${r.nHits} COMBO  倍率 x${(r.comboMult * r.sMult).toFixed(1)}`, n);
+    comboHitSound(n + 1);
+    await sleep(700);
+  }
+
+  function rainEmoji(n, emo) {
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement("div");
+      p.className = "coin";
+      p.textContent = emo[Math.floor(Math.random() * emo.length)];
+      p.style.left = Math.random() * 100 + "vw";
+      p.style.top = "-50px";
+      document.body.appendChild(p);
+      p.animate(
+        [{ transform: "translateY(0) rotate(0)" }, { transform: `translateY(${innerHeight + 120}px) rotate(${Math.random()*720-360}deg)` }],
+        { duration: 1500 + Math.random() * 1800, delay: Math.random() * 900, easing: "ease-in", fill: "forwards" }
+      ).onfinish = () => p.remove();
+    }
+  }
+
+  async function showDoomOverlay(penalty) {
+    winOverlay.classList.remove("jackpot");
+    winOverlay.classList.add("doom", "show");
+    winTitle.textContent = "💀 DOOM 💀";
+    winLabel.textContent = "呪いのドクロが全てを奪っていった…";
+    winComboEl.textContent = "";
+    winAmountEl.textContent = "-" + penalty.toLocaleString();
+    flashScreen(0.7, 500);
+    shake(machine, 18, 1200);
+    rainEmoji(45, ["💀", "🦴", "🕸️"]);
+    [220, 196, 165, 147, 110, 82].forEach((f, i) => beep(f, 0.5, "sawtooth", 0.07, i * 0.22));
+    await sleep(3000);
+    winOverlay.classList.remove("show", "doom");
+  }
+
+  async function showFeverOverlay() {
+    winOverlay.classList.add("jackpot", "show");
+    winTitle.textContent = "★ SUPER FEVER ★";
+    winLabel.textContent = "😇 天使の輪が揃った！";
+    winComboEl.textContent = "10回無料スピン × 全配当5倍";
+    winAmountEl.textContent = "😇😇😇😇😇";
+    flashScreen(0.9, 500);
+    shake(machine, 10, 800);
+    rainEmoji(55, ["😇", "✨", "🌈", "💛"]);
+    jackpotJingle();
+    coinBurst(50);
+    await sleep(2800);
+    winOverlay.classList.remove("show", "jackpot");
+  }
+
+  async function showWinOverlay(tier, amount, label, comboText) {
+    winOverlay.classList.toggle("jackpot", tier === "jackpot");
+    winTitle.textContent = tier === "jackpot" ? "★ JACKPOT ★" : "BIG WIN";
+    winLabel.textContent = label;
+    winComboEl.textContent = comboText || "";
+    winAmountEl.textContent = "+0";
+    winOverlay.classList.add("show");
+    flashScreen(tier === "jackpot" ? 0.85 : 0.5, tier === "jackpot" ? 400 : 250);
+    shake(machine, tier === "jackpot" ? 14 : 8, tier === "jackpot" ? 900 : 500);
+    const rect = reelsFrame.getBoundingClientRect();
+    coinBurst(tier === "jackpot" ? 45 : 22, rect);
+    if (tier === "jackpot") {
+      jackpotJingle();
+      setTimeout(()=>coinBurst(40, rect), 500);
+      setTimeout(()=>coinBurst(35), 1000);
+      setTimeout(()=>flashScreen(0.4, 200), 700);
+    } else {
+      bigJingle();
+      setTimeout(()=>coinBurst(15, rect), 450);
+    }
+    await countUp(winAmountEl, amount, tier === "jackpot" ? 1800 : 1100);
+    await new Promise(r => setTimeout(r, tier === "jackpot" ? 1300 : 800));
+    winOverlay.classList.remove("show");
+  }
+
+  // ===== UI update =====
+  function streakMult() {
+    const cap = owned.has("infinity") ? Infinity : (owned.has("voltage") ? 5 : STREAK_CAP);
+    return Math.min(1 + (STREAK_STEP + boostLv.streak * 0.05) * streak, cap);
+  }
+  function updateUIBasic() {
+    creditsEl.textContent = credits.toLocaleString();
+    roundEl.textContent = round > GOAL_ROUND ? round + "∞" : round + "/" + GOAL_ROUND;
+    quotaEl.textContent = quota.toLocaleString();
+    spinsEl.textContent = spinsLeft;
+    streakEl.textContent = "x" + streakMult().toFixed(1);
+    streakBox.classList.toggle("streak-hot", streak >= 3);
+    linesEl.textContent = fever > 0 ? `🌈${fever}` : "縦横斜";
+    betDown.disabled = spinning || betIdx === 0;
+    betUp.disabled = spinning || betIdx === BET_STEPS.length-1;
+    spinBtn.disabled = spinning || gameOver || credits < BET_STEPS[betIdx];
+    shopBtn.disabled = spinning || gameOver;
+    $("spinsBox").classList.toggle("urgent", spinsLeft <= 2);
+    $("quotaBox").classList.toggle("urgent", spinsLeft <= 2 && credits < quota);
+  }
+  function updateUI() {
+    updateUIBasic();
+    if (!spinning && !gameOver && credits < BET_STEPS[betIdx] && betIdx > 0) {
+      while (betIdx > 0 && credits < BET_STEPS[betIdx]) betIdx--;
+      spinBtn.disabled = credits < BET_STEPS[betIdx];
+    }
+    betEl.textContent = BET_STEPS[betIdx];
+    if (!spinning && !gameOver && credits < BET_STEPS[0]) endGame(false, "資金が尽きた…");
+  }
+  function setMessage(main, sub, cls) {
+    msgMain.className = "msg-main " + (cls||"");
+    msgMain.textContent = main;
+    msgSub.textContent = sub || "";
+  }
+  function renderSkills() {
+    skillsStrip.innerHTML = "";
+    const hasBoosts = Object.values(boostLv).some(v=>v>0);
+    if (owned.size === 0 && !hasBoosts) {
+      skillsStrip.innerHTML = '<span class="hint">スキル未所持 — SHOPで購入して配当を強化せよ</span>';
+      return;
+    }
+    for (const id of owned) {
+      const p = PERKS.find(x=>x.id===id);
+      const chip = document.createElement("div");
+      chip.className = "skill-chip";
+      chip.textContent = p.icon;
+      chip.setAttribute("data-tip", `${p.name}: ${p.desc}`);
+      skillsStrip.appendChild(chip);
+    }
+    for (const b of BOOSTS) {
+      if (boostLv[b.id] > 0) {
+        const chip = document.createElement("div");
+        chip.className = "skill-chip";
+        chip.style.borderColor = "var(--neon-cyan)";
+        chip.textContent = `${b.icon}${boostLv[b.id]}`;
+        chip.setAttribute("data-tip", `${b.name} Lv${boostLv[b.id]}: ${b.desc}`);
+        skillsStrip.appendChild(chip);
+      }
+    }
+  }
+
+  // ===== Shop (毎ラウンド、ランダムな3品だけ入荷する在庫制) =====
+  function rollShopStock() {
+    const pool = PERKS.filter(p => !owned.has(p.id) && !(p.cheat && round <= GOAL_ROUND));
+    shopStock = pool.sort(() => Math.random() - 0.5).slice(0, 3).map(p => p.id);
+  }
+
+  function renderShop() {
+    shopGrid.innerHTML = "";
+    const stock = shopStock.map(id => PERKS.find(p => p.id === id)).filter(Boolean);
+    if (stock.length === 0) {
+      shopGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#778; padding:24px; letter-spacing:2px;">SOLD OUT<br><span style="font-size:0.7rem;">次のラウンドで新しい在庫が入荷する</span></div>';
+      return;
+    }
+    for (const p of stock) {
+      const div = document.createElement("div");
+      const poor = credits < p.price + BET_STEPS[0];
+      div.className = "perk" + (poor ? " poor" : "") + (p.legend ? " legend" : "") + (p.cheat ? " cheat" : "");
+      div.innerHTML = `
+        <div class="icon">${p.icon}</div>
+        <div class="info"><div class="name">${p.name}</div><div class="desc">${p.desc}</div></div>
+        <div class="price">${p.price.toLocaleString()}</div>`;
+      if (!poor) {
+        div.addEventListener("click", () => {
+          credits -= p.price;
+          owned.add(p.id);
+          shopStock = shopStock.filter(id => id !== p.id);
+          updateBetSteps();
+          beep(880, 0.1, "triangle", 0.06); beep(1320, 0.15, "triangle", 0.06, 0.08);
+          renderSkills(); renderShop(); updateUI();
+        });
+      }
+      shopGrid.appendChild(div);
+    }
+  }
+  function toggleShop(open) {
+    if (open === undefined) open = !shopModal.classList.contains("open");
+    if (open && (spinning || gameOver)) return;
+    if (open) renderShop();
+    shopModal.classList.toggle("open", open);
+  }
+  shopBtn.addEventListener("click", ()=>toggleShop(true));
+  shopClose.addEventListener("click", ()=>toggleShop(false));
+  shopModal.addEventListener("click", e => { if (e.target === shopModal) toggleShop(false); });
+
+  // ===== Odds panel =====
+  const oddsModal = $("oddsModal"), oddsBody = $("oddsBody"), oddsBtn = $("oddsBtn"), oddsClose = $("oddsClose");
+
+  // 現在のスキル構成でnスピンをシミュレーションして実測確率を出す
+  function simulateOdds(n = 20000) {
+    const bet = 100;
+    const savedStreak = streak;
+    streak = 0;                      // ストリーク倍率の影響を除いた素の値で計測
+    const bias = owned.has("sync") ? 0.05 : 0;
+    let hits = 0, ret = 0, big = 0, jp = 0, scat = 0;
+    const symWins = {};
+    SYMBOLS.forEach(s => symWins[s.icon] = 0);
+    for (let k = 0; k < n; k++) {
+      const grid = [];
+      for (let i = 0; i < NREELS; i++) {
+        grid.push([0,1,2].map(r => (i > 0 && Math.random() < bias) ? grid[i-1][r] : randSymbol()));
+      }
+      const r = evaluate(grid, bet);
+      if (r.win > 0) { hits++; ret += r.win; }
+      else if (owned.has("insurance")) ret += bet * 0.5;
+      if (r.kind === "big") big++;
+      if (r.kind === "jackpot") jp++;
+      if (r.scatterWin > 0) scat++;
+      const seen = new Set();
+      for (const wl of r.winLines) {
+        if (wl.count >= 3 && !seen.has(wl.icon)) { seen.add(wl.icon); symWins[wl.icon]++; }
+      }
+    }
+    streak = savedStreak;
+    return { hit: hits/n, rtp: ret/(n*bet), big: big/n, jp: jp/n, scat: scat/n, symWins, n };
+  }
+
+  function adjustWeight(icon, dir) {
+    const base = SYMBOLS.find(s=>s.icon===icon);
+    const cur = base.weight + (weightMod[icon] || 0);
+    const lim = weightLimits(base);
+    const cost = dir > 0 ? plusCost(base) : MINUS_COST;
+    if (dir > 0 && cur >= lim.max) return;
+    if (dir < 0 && cur <= lim.min) return;
+    if (credits < cost + BET_STEPS[0]) { beep(160, 0.15, "sawtooth", 0.04); return; }
+    credits -= cost;
+    weightMod[icon] = (weightMod[icon] || 0) + dir;
+    beep(880, 0.08, "triangle", 0.05); beep(1175, 0.1, "triangle", 0.05, 0.06);
+    updateUIBasic();
+    renderOdds();
+  }
+
+  function renderOdds() {
+    const syms = currentSymbols();
+    const tw = syms.reduce((a,s)=>a+s.weight,0);
+    const o = simulateOdds();
+    const pct = (v, d=1) => (v*100).toFixed(d) + "%";
+    const maxRate = Math.max(...syms.map(s=>s.weight/tw));
+
+    let rows = "";
+    for (const s of syms) {
+      const base = SYMBOLS.find(x=>x.icon===s.icon);
+      const cur = base.weight + (weightMod[s.icon] || 0);
+      const lim = weightLimits(base);
+      const pCost = plusCost(base);
+      const rate = s.weight / tw;
+      const mod = weightMod[s.icon] || 0;
+      const canPlus = cur < lim.max && credits >= pCost + BET_STEPS[0];
+      const canMinus = cur > lim.min && credits >= MINUS_COST + BET_STEPS[0];
+      rows += `<tr>
+        <td class="sym">${s.icon}</td>
+        <td class="num">x${s.pay}</td>
+        <td class="num">${pct(rate)}${mod !== 0 ? ` <span style="color:${mod>0?'var(--neon-green)':'var(--danger)'};font-size:0.62rem">(${mod>0?'+':''}${mod})</span>` : ""}</td>
+        <td style="width:22%"><div class="odds-bar-wrap"><div class="odds-bar" style="width:${(rate/maxRate*100).toFixed(0)}%"></div></div></td>
+        <td class="num">${pct(o.symWins[s.icon]/o.n, 2)}</td>
+        <td class="num" style="white-space:nowrap">
+          <button class="wt-btn" data-i="${s.icon}" data-d="-1" ${canMinus?"":"disabled"} title="出現率を下げる (${MINUS_COST})">−</button>
+          <button class="wt-btn plus" data-i="${s.icon}" data-d="1" ${canPlus?"":"disabled"} title="出現率を上げる (${pCost.toLocaleString()})">＋</button>
+          <div class="wt-cost">＋${pCost.toLocaleString()}／−${MINUS_COST}</div>
+        </td>
+      </tr>`;
+    }
+
+    oddsBody.innerHTML = `
+      <div class="odds-summary">
+        <div class="odds-box"><div class="label">当選率</div><div class="value">${pct(o.hit)}</div></div>
+        <div class="odds-box"><div class="label">還元率 (RTP)</div><div class="value gold">${pct(o.rtp)}</div></div>
+        <div class="odds-box"><div class="label">🍒スキャッター率</div><div class="value">${pct(o.scat)}</div></div>
+        <div class="odds-box"><div class="label">BIG WIN率</div><div class="value gold">${pct(o.big)}</div></div>
+        <div class="odds-box"><div class="label">JACKPOT率</div><div class="value pink">${pct(o.jp, 2)}</div></div>
+        <div class="odds-box"><div class="label">所持クレジット</div><div class="value gold">${credits.toLocaleString()}</div></div>
+      </div>
+      <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+      <table class="odds-table">
+        <tr><th>絵柄</th><th class="num">配当</th><th class="num">出現率</th><th></th><th class="num">3連続成立率</th><th class="num">🪙 出現率操作</th></tr>
+        ${rows}
+      </table>
+      </div>
+      <div class="odds-note">
+        <b style="color:var(--gold)">🪙 コインで出現率を操作できる！</b> ＋で出やすく（コスト=配当x4）、−で出にくく（一律${MINUS_COST}）<br>
+        調整範囲は初期値の半分〜2倍。<b style="color:var(--neon-cyan)">ROUND20クリア後は上限100まで解放</b>され、盤面を支配できる<br>
+        ${o.n.toLocaleString()}回スピンの実測シミュレーション（スキル${owned.size}個＋出現率調整を反映）<br>
+        ※ 還元率にコンボは含む／ストリーク・リスピン・利息は含まない
+      </div>`;
+
+    oddsBody.querySelectorAll(".wt-btn").forEach(b => {
+      b.addEventListener("click", () => adjustWeight(b.dataset.i, +b.dataset.d));
+    });
+  }
+
+  function toggleOdds(open) {
+    if (open === undefined) open = !oddsModal.classList.contains("open");
+    if (open && spinning) return;
+    if (open) renderOdds();
+    oddsModal.classList.toggle("open", open);
+  }
+  oddsBtn.addEventListener("click", ()=>toggleOdds(true));
+  oddsClose.addEventListener("click", ()=>toggleOdds(false));
+  oddsModal.addEventListener("click", e => { if (e.target === oddsModal) toggleOdds(false); });
+
+  // ===== Payout logic =====
+  const ROYALS = ["💎","🔔","⭐"];
+  function scatterNeeds() { return owned.has("field") ? [4,7,9] : [5,8,10]; }
+
+  // grid: [reel][row] = symbol object
+  // 縦・横・斜めの全パスを走査し、3つ以上連続した並びをすべて当たりにする
+  function evaluate(grid, bet) {
+    const winLines = [];
+    let sum = 0;
+    const hasWild = owned.has("wild");
+    const iconAt = ([c,r]) => grid[c][r].icon;
+
+    for (const path of PATHS) {
+      const cells = path.cells;
+      let i = 0;
+      while (i <= cells.length - 3) {
+        // i から連続する並びを探す（🃏ワイルド対応）
+        let base = null, real = 0, wilds = 0, j = i;
+        for (; j < cells.length; j++) {
+          const ic = iconAt(cells[j]);
+          if (hasWild && ic === "🃏") { wilds++; continue; }
+          if (base === null) { base = ic; real = 1; }
+          else if (ic === base) real++;
+          else break;
+        }
+        const len = j - i;
+        const wildOk = !hasWild || wilds === 0 || real >= 2 || base === null;
+
+        if (len >= 3 && wildOk) {
+          if (base === null) base = "🃏";
+          const sym = SYMBOLS.find(s=>s.icon===base);
+          const usedWild = hasWild && wilds > 0 && base !== "🃏";
+          let cnt = usedWild ? Math.min(len, 3) : len;   // ワイルド代用は3連まで
+          let w = bet * sym.pay * COUNT_MULT[Math.min(cnt,5)] / LINE_DIV;
+          if (usedWild) w *= 0.4;
+          if (cnt >= 4 && boostLv.chain > 0) w *= 1 + boostLv.chain * 0.25;
+          if (owned.has("king") && cnt >= 4) w *= 2;
+          if (owned.has("diamond") && base === "💎") w *= 2;
+          if (owned.has("cherry") && base === "🍒") w *= 3;
+          if (owned.has("lemon") && base === "🍋") w *= 3;
+          if (owned.has("melon") && base === "🍉") w *= 3;
+          if (owned.has("star") && base === "⭐") w *= 2;
+          if (owned.has("royal") && ROYALS.includes(base)) w *= 1.5;
+          if (owned.has("tower") && path.name === "縦") w *= 2;
+          if (owned.has("mirror") && path.name === "斜め") w *= 2;
+          winLines.push({ path, cells: cells.slice(i, j), count: cnt, icon: base, win: w });
+          sum += w;
+          i = j;
+        } else if (path.isRow && len === 2 && wilds === 0 && base !== null) {
+          // 横2連続ボーナス（スキル）
+          let w = 0;
+          if (owned.has("seven") && base === "7️⃣") w = bet * 250 * 0.4 / LINE_DIV;
+          else if (owned.has("royal") && ROYALS.includes(base)) w = bet * SYMBOLS.find(s=>s.icon===base).pay * 1.5 * 0.3 / LINE_DIV;
+          if (w > 0) {
+            winLines.push({ path, cells: cells.slice(i, j), count: 2, icon: base, win: w });
+            sum += w;
+            i = j;
+          } else i++;
+        } else i++;
+      }
+    }
+
+    // cherry scatter
+    const needs = scatterNeeds();
+    let cherries = 0;
+    for (const col of grid) for (const s of col) if (s.icon === "🍒") cherries++;
+    let scatterWin = 0;
+    if (cherries >= needs[2]) scatterWin = bet * 8;
+    else if (cherries >= needs[1]) scatterWin = bet * 2;
+    else if (cherries >= needs[0]) scatterWin = bet * 0.5;
+    if (scatterWin > 0 && owned.has("cherry")) scatterWin *= 2;
+    if (scatterWin > 0 && boostLv.scatter > 0) scatterWin *= 1 + boostLv.scatter * 0.5;
+    sum += scatterWin;
+
+    const nHits = winLines.length + (scatterWin > 0 ? 1 : 0);
+    if (nHits === 0) return { win: 0, kind: "lose", winLines, scatterWin, nHits, comboMult: 1, sMult: 1 };
+
+    const comboK = (owned.has("combo") ? 1.0 : 0.5) + boostLv.combo * 0.25;
+    const comboMult = 1 + comboK * (nHits - 1);
+    const sMult = streakMult();
+    let total = sum * comboMult * sMult;
+    if (owned.has("clover")) total *= 1.5;
+    if (owned.has("midas")) total *= 3;
+    if (owned.has("gigamult")) total *= 5;
+    if (boostLv.all > 0) total *= 1 + boostLv.all * 0.1;
+    total = Math.max(1, Math.round(total));
+
+    // tier
+    let kind = "small";
+    const has5 = winLines.some(w => w.count === 5 && SYMBOLS.find(s=>s.icon===w.icon).pay >= 50);
+    const seven4 = winLines.some(w => w.icon === "7️⃣" && w.count >= 4);
+    if (has5 || seven4 || total >= bet * 60) kind = "jackpot";
+    else if (total >= bet * 10 || winLines.some(w=>w.count>=4)) kind = "big";
+
+    // label
+    let label = "";
+    if (winLines.length > 0) {
+      const best = winLines.reduce((a,b)=>a.win>b.win?a:b);
+      label = `${best.icon}x${best.count} ${best.path.name}`;
+      if (winLines.length > 1) label += ` 他${winLines.length-1}本`;
+    }
+    if (scatterWin > 0) label += (label ? " ＋ " : "") + `🍒スキャッター${cherries}個`;
+
+    return { win: total, kind, winLines, scatterWin, nHits, comboMult, sMult, label };
+  }
+
+  // ===== Round / settlement =====
+  function nextQuota(q) { return Math.round(q * (owned.has("crusher") ? 1.5 : QUOTA_MULT) / 50) * 50; }
+  function roundSpins() { return owned.has("timesand") ? 10 : SPINS_PER_ROUND; }
+  function updateBetSteps() {
+    BET_STEPS = owned.has("highroller") ? BET_STEPS_CHEAT : (round >= 11 ? BET_STEPS_EX : BET_STEPS_BASE);
+    if (betIdx >= BET_STEPS.length) betIdx = BET_STEPS.length - 1;
+  }
+
+  function settleRound() {
+    const payment = owned.has("card") ? Math.round(quota * 0.9) : quota;   // 💳10%割引
+    if (credits >= payment) {
+      credits -= payment;
+      const oldQuota = payment;
+      let interest = 0;
+      if (owned.has("invest")) { interest = Math.round(credits * 0.1); credits += interest; }
+      round++;
+      quota = nextQuota(quota);
+      spinsLeft = roundSpins();
+      // 10ステージクリアでMAXベット解放
+      const betUnlocked = round === 11;
+      updateBetSteps();
+      // 20ラウンド制覇 → GAME CLEAR & エンドレス突入
+      const cleared = round === GOAL_ROUND + 1;
+      if (cleared) {
+        jackpotJingle();
+        rainEmoji(60, ["🏆", "🎉", "👑", "✨"]);
+        coinBurst(60);
+        flashScreen(0.8, 600);
+      }
+      rollShopStock();   // ショップ在庫を入れ替え
+      // 達成報酬: 倍率強化を3択から1つ
+      const picks = BOOSTS.slice().sort(()=>Math.random()-0.5).slice(0,3);
+      settleBox.className = "settle";
+      settleBox.innerHTML = `
+        <h2 style="color:${cleared ? "var(--gold)" : "var(--neon-green)"}">${cleared ? "🏆 GAME CLEAR!!" : "✅ ノルマ達成！"}</h2>
+        ${cleared ? '<p style="color:var(--gold); font-weight:800; letter-spacing:1px;">20ラウンド制覇、おめでとう！<br>ここから先は<b>エンドレスモード</b>——限界まで走れ！</p>' : ""}
+        <p>支払い: <b style="color:var(--gold)">${oldQuota.toLocaleString()}</b> クレジット${interest > 0 ? `　🏦 利息: <b style="color:var(--neon-green)">+${interest.toLocaleString()}</b>` : ""}</p>
+        <div class="big" style="color:var(--neon-cyan)">ROUND ${round}${round > GOAL_ROUND ? " ∞" : " / " + GOAL_ROUND}</div>
+        <p>次のノルマ: <b style="color:var(--danger)">${quota.toLocaleString()}</b>　残りスピン: ${roundSpins()}回</p>
+        ${betUnlocked ? '<p style="color:var(--gold); font-weight:800; letter-spacing:1px;">🎉 10ステージクリア達成！ MAXベットが2000に解放！</p>' : ""}
+        <p style="color:var(--gold); font-weight:700; letter-spacing:2px; margin-top:12px;">▼ 達成報酬: 倍率強化を1つ選べ ▼</p>
+        <div class="boost-grid">
+          ${picks.map(b => `
+            <div class="perk boost-pick" data-b="${b.id}">
+              <div class="icon">${b.icon}</div>
+              <div class="info">
+                <div class="name">${b.name} <span style="color:var(--neon-cyan)">Lv${boostLv[b.id]} → Lv${boostLv[b.id]+1}</span></div>
+                <div class="desc">${b.desc}</div>
+              </div>
+            </div>`).join("")}
+        </div>`;
+      settleModal.classList.add("open");
+      winJingle();
+      settleBox.querySelectorAll(".boost-pick").forEach(el => {
+        el.addEventListener("click", () => {
+          const b = BOOSTS.find(x => x.id === el.dataset.b);
+          boostLv[b.id]++;
+          beep(660, 0.1, "triangle", 0.06); beep(880, 0.1, "triangle", 0.06, 0.08); beep(1320, 0.15, "triangle", 0.06, 0.16);
+          settleModal.classList.remove("open");
+          renderSkills();
+          setMessage(`${b.icon} ${b.name} Lv${boostLv[b.id]}！`, `ROUND ${round}: ノルマ ${quota.toLocaleString()} を稼げ`, "msg-win");
+          updateUI();
+        });
+      });
+    } else {
+      endGame(false, `ノルマ ${payment.toLocaleString()} を払えなかった…`);
+    }
+  }
+
+  function endGame(win, reason) {
+    gameOver = true;
+    settleBox.className = "settle gameover";
+    settleBox.innerHTML = `
+      <h2 style="color:var(--danger)">💀 GAME OVER</h2>
+      <p>${reason}</p>
+      <div class="big" style="color:var(--gold)">ROUND ${round} 到達</div>
+      <p>所持クレジット: ${credits.toLocaleString()}<br>所持スキル: ${owned.size}個　強化Lv合計: ${Object.values(boostLv).reduce((a,b)=>a+b,0)}</p>
+      <button id="retryBtn">もう一度挑戦</button>`;
+    settleModal.classList.add("open");
+    beep(220, 0.4, "sawtooth", 0.05); beep(165, 0.5, "sawtooth", 0.05, 0.3); beep(110, 0.9, "sawtooth", 0.06, 0.6);
+    $("retryBtn").addEventListener("click", resetGame);
+  }
+
+  function resetGame() {
+    credits = 1000; betIdx = 0; round = 1; quota = START_QUOTA;
+    spinsLeft = SPINS_PER_ROUND; owned = new Set(); gameOver = false; streak = 0;
+    weightMod = {};
+    boostLv = { all: 0, combo: 0, streak: 0, chain: 0, scatter: 0 };
+    fever = 0;
+    updateBetSteps();
+    rollShopStock();
+    machine.classList.remove("fever");
+    settleModal.classList.remove("open");
+    lastWinEl.textContent = 0;
+    clearLineFX();
+    setMessage("SPINでスタート", "期限までにノルマを稼げ", "");
+    renderSkills(); updateUI();
+  }
+
+  // ===== Spin =====
+  async function spin(free = false) {
+    if (spinning || gameOver) return;
+    const bet = BET_STEPS[betIdx];
+    const inFever = fever > 0;
+    if (!free && !inFever && credits < bet) return;
+
+    spinning = true;
+    if (!free) {
+      if (inFever) fever--;          // フィーバー中はベット無料・スピン消費なし
+      else { credits -= bet; spinsLeft--; }
+    }
+    lastWinEl.textContent = 0;
+    clearLineFX();
+    setMessage(
+      inFever ? `🌈 FEVER! 残り${fever}回` : (free ? "🎲 FREE RESPIN!" : "SPINNING..."),
+      inFever ? "ベット無料・全配当x5" : "",
+      (free || inFever) ? "msg-win" : ""
+    );
+    updateUIBasic();
+    beep(220, 0.1); beep(330, 0.1, "square", 0.04, 0.05);
+
+    // 超低確率イベント抽選 (💀はROUND3以降のみ・エンドレスでは両方とも確率UP)
+    let event = null;
+    if (!free && !inFever) {
+      const endless = round > GOAL_ROUND;
+      const sc = endless ? SKULL_CHANCE_ENDLESS : SKULL_CHANCE;
+      const fc = endless ? FEVER_CHANCE_ENDLESS : FEVER_CHANCE;
+      const roll = Math.random();
+      if (roll < sc && round >= 3) event = "skull";
+      else if (roll < sc + fc) event = "fever";
+    }
+
+    // grid[reel][row] — 🎯シンクロレンズ所持時、隣リールと同調しやすくなる
+    const bias = owned.has("sync") ? 0.05 : 0;
+    const makeGrid = () => {
+      const g = [];
+      for (let i = 0; i < NREELS; i++) {
+        g.push([0,1,2].map(r => (i > 0 && Math.random() < bias) ? g[i-1][r] : randSymbol()));
+      }
+      return g;
+    };
+    let grid = makeGrid();
+    // 🎰ゴッドマシン: ハズレ盤面を引き直し、必ず当たりにする
+    if (owned.has("god") && !event) {
+      let tries = 0;
+      while (tries < 80 && evaluate(grid, bet).win === 0) { grid = makeGrid(); tries++; }
+    }
+    // イベント発生時は中央ラインを特殊絵柄で埋める
+    if (event) {
+      const ic = event === "skull" ? "💀" : "😇";
+      for (let i = 0; i < NREELS; i++) grid[i][1] = { icon: ic, weight: 0, pay: 0 };
+    }
+
+    const promises = strips.map((stripEl, i) => new Promise(res => {
+      const count = buildStrip(stripEl, grid[i]);
+      const distance = (count - 3) * cellH();
+      stripEl.style.transition = "none";
+      stripEl.style.transform = "translateY(0)";
+      void stripEl.offsetHeight;
+      const dur = 1.1 + i * 0.32;
+      stripEl.style.transition = `transform ${dur}s cubic-bezier(0.15, 0.85, 0.25, 1)`;
+      stripEl.style.transform = `translateY(-${distance}px)`;
+      const tick = setInterval(()=>beep(600+Math.random()*200, 0.03, "square", 0.012), 90);
+      setTimeout(() => { clearInterval(tick); beep(150, 0.12, "sine", 0.06); res(); }, dur*1000);
+    }));
+    await Promise.all(promises);
+
+    // ===== 💀 呪いのドクロ: 所持クレジット全没収 =====
+    if (event === "skull") {
+      const penalty = credits;
+      credits = 0;
+      streak = 0;
+      drawOneLine({ cells: [[0,1],[1,1],[2,1],[3,1],[4,1]], path: { color: "#ff2222" } });
+      strips.forEach(s => { const c = s.children[s.children.length - 2]; if (c) c.classList.add("cell-scatter"); });
+      setMessage("💀 呪いのドクロ！！", `所持クレジットが全て消えた… -${penalty.toLocaleString()}`, "msg-danger");
+      await showDoomOverlay(penalty);
+      spinning = false;
+      if (spinsLeft <= 0) { updateUIBasic(); setTimeout(settleRound, 600); }
+      else updateUI();
+      return;
+    }
+    // ===== 😇 スーパーフィーバー =====
+    if (event === "fever") {
+      fever = 10;
+      machine.classList.add("fever");
+      drawOneLine({ cells: [[0,1],[1,1],[2,1],[3,1],[4,1]], path: { color: "#f5c542" } });
+      strips.forEach(s => { const c = s.children[s.children.length - 2]; if (c) c.classList.add("cell-win"); });
+      setMessage("😇 SUPER FEVER!!", "10回無料スピン＆全配当x5！", "msg-win");
+      await showFeverOverlay();
+      spinning = false;
+      if (spinsLeft <= 0) { updateUIBasic(); setTimeout(settleRound, 600); }
+      else updateUI();
+      return;
+    }
+
+    let r = evaluate(grid, bet);
+    if (inFever && r.win > 0) {
+      const boosted = r.win * 5;
+      r = { ...r, win: boosted, label: r.label + " 🌈x5", kind: boosted >= bet * 60 ? "jackpot" : r.kind };
+    }
+
+    if (r.win > 0) {
+      credits += r.win;
+      streak++;
+      lastWinEl.textContent = r.win.toLocaleString();
+      const comboText = r.nHits > 1 ? `COMBO x${r.nHits} (倍率x${r.comboMult.toFixed(1)})` : "";
+      const streakText = r.sMult > 1 ? ` 🔥x${r.sMult.toFixed(1)}` : "";
+
+      if (r.nHits > 1) {
+        await playComboSequence(r);   // コンボを1本ずつ順番に演出
+      } else {
+        drawLines(r.winLines);
+        highlightCells(r.winLines, r.scatterWin > 0);
+      }
+
+      if (r.kind === "jackpot" || r.kind === "big") {
+        setMessage(r.kind === "jackpot" ? "🎉 JACKPOT!! 🎉" : "BIG WIN!", `${r.label}  +${r.win.toLocaleString()}${streakText}`, "msg-win");
+        await new Promise(res=>setTimeout(res, 250));
+        await showWinOverlay(r.kind, r.win, r.label, comboText + streakText);
+      } else {
+        setMessage("WIN!", `${r.label}  +${r.win.toLocaleString()}${streakText}`, "msg-win");
+        winJingle();
+        coinBurst(6 + r.nHits*4, reelsFrame.getBoundingClientRect());
+      }
+    } else {
+      streak = owned.has("charm") ? Math.floor(streak / 2) : 0;
+      if (owned.has("insurance") && !free && !inFever) {
+        const refund = Math.round(bet * 0.5);
+        credits += refund;
+        setMessage("ハズレ…", `🛡️ 保険発動 +${refund} 返金`, "msg-lose");
+        beep(440, 0.1, "triangle", 0.04);
+      } else {
+        const quips = ["次こそは…", "惜しい！", "リールは非情", "ツキはこれから", "深呼吸して、もう一度"];
+        setMessage("ハズレ", quips[Math.floor(Math.random()*quips.length)], "msg-lose");
+        beep(180, 0.2, "sawtooth", 0.03);
+      }
+      const laplace = owned.has("laplace") && !free;
+      if (laplace || (owned.has("respin") && !free && Math.random() < 0.3)) {
+        spinning = false;
+        setMessage(laplace ? "👁️ ラプラスの悪魔 発動！" : "🎲 運命のダイス発動！", "無料リスピン…！", "msg-win");
+        beep(660, 0.12, "triangle", 0.06); beep(990, 0.15, "triangle", 0.06, 0.1);
+        setTimeout(()=>spin(true), 900);
+        return;
+      }
+    }
+
+    // フィーバー終了判定
+    if (inFever && fever === 0) {
+      machine.classList.remove("fever");
+      msgSub.textContent = (msgSub.textContent ? msgSub.textContent + "　" : "") + "🌈フィーバー終了";
+    }
+
+    spinning = false;
+    if (spinsLeft <= 0) {
+      updateUIBasic();
+      setTimeout(settleRound, 600);
+    } else {
+      updateUI();
+    }
+  }
+
+  // ===== Events =====
+  spinBtn.addEventListener("click", ()=>spin(false));
+  betUp.addEventListener("click", ()=>{ betIdx = Math.min(betIdx+1, BET_STEPS.length-1); updateUI(); });
+  betDown.addEventListener("click", ()=>{ betIdx = Math.max(betIdx-1, 0); updateUI(); });
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space") { e.preventDefault(); if (!shopModal.classList.contains("open") && !settleModal.classList.contains("open") && !oddsModal.classList.contains("open")) spin(false); }
+    if (e.code === "KeyS") toggleShop();
+    if (e.code === "KeyO") toggleOdds();
+  });
+
+  rollShopStock();
+  renderSkills();
+  updateUI();
+})();
+</script>
+</body>
+</html>
